@@ -9,9 +9,6 @@
 
 int main() {
 
-	char *response_ok = "HTTP/1.1 200 OK\r\n\r\n";
-	char *response_not_found = "HTTP/1.1 404 Not Found\r\n\r\n";
-
 	// Disable output buffering
 	setbuf(stdout, NULL);
  	setbuf(stderr, NULL);
@@ -46,7 +43,7 @@ int main() {
 									};
 	
 	// Makes sure that the server can bind the socket to the address and port number in server_addr
-	if (bind(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) != 0) {
+	if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
 		printf("Bind failed: %s \n", strerror(errno));
 		return 1;
 	}
@@ -62,14 +59,42 @@ int main() {
 	printf("Waiting for a client to connect...\n");
 	client_addr_len = sizeof(client_addr);
 	
-	/*
-	Extracts first connection request in queue from server_fd, creates a new connected socket, 
-	& returns a file descriptor referring to the socket
-	Connection is established 
+	/**
+	 * Extracts first connection request in queue from server_fd, creates a new connected socket, 
+	 * & returns a file descriptor referring to the socket.
+	 * Connection is established.
 	*/
-	int id = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_len);
+	int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
 	printf("Client connected\n");
+
+	/**
+	 * recv() gets the data on the client_fd socket and stores it in the readBuffer buffer.
+	 * If successful, returns the length of the datagram in bytes,
+	 * otherwise returns -1.
+	 */
+	char readBuffer[1024];
+	int bytesRecieved = recv(client_fd, readBuffer, sizeof(readBuffer), 0);
+
+	// Extract the path
+	char* reqPath = strtok(readBuffer, " ");
+	reqPath = strtok(NULL, " ");
+
+	int bytesSent;
 	
+	if (strcmp(reqPath, "/") == 0) {
+		char *response_200 = "HTTP/1.1 200 OK\r\n\r\n";
+		bytesSent = send(client_fd, response_200, strlen(response_200), 0);
+	}
+	else {
+		char *response_404 = "HTTP/1.1 404 Not Found\r\n\r\n";
+		bytesSent = send(client_fd, response_404, strlen(response_404), 0);
+	}
+	if(bytesSent < 0) {
+		printf("Send failed");
+		return 1;
+	}
+
+
 	close(server_fd);
 
 	return 0;
